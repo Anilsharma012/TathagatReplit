@@ -1,19 +1,12 @@
-// CoursePurchase.jsx
+
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from "react-router-dom";
 import './CoursePurchase.css';
-
 import one from "../../images/one1.png";
 import two from "../../images/two2.png";
 import three from "../../images/three3.png";
-
-import reviewMain from "../../images/REVIEW5.PNG";   // existing big image (right side)
-import review3 from "../../images/Reviewnewimage6.jpg";      // NEW 1
-import review4 from "../../images/Reviewnewimage.jpeg";      // NEW 2
-import review6 from "../../images/Reviewnewimage4.jpg";      // NEW 3
-
+import review from "../../images/REVIEW5.PNG";
 import frame from "../../images/frameCourse.png";
-import Chatbox from '../../components/Chat/Chatbox';
 
 // NOTE: Bootstrap <link> ko index.html me include karna chahiye. JSX file ke top par <link> likhne se error aata hai.
 // <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css" />
@@ -22,7 +15,7 @@ const curriculumData = [
   { title: 'Welcome! Course Introduction', content: 'What does the course cover?' },
   { title: 'Foundation Phase – Concept Building', content: '' },
   { title: 'Application Phase – Practice & Assignments', content: '' },
-  { title: 'CopyCAT Mock Test Series', content: '' },
+  { title: 'iCAT Mock Test Series', content: '' },
   { title: 'CAT Crash Course – Final Lap', content: '' }
 ];
 
@@ -35,8 +28,6 @@ const instructors = [
 const CoursePurchase = () => {
   const [openCurriculumIndex, setOpenCurriculumIndex] = useState(0);
   const [activeTab, setActiveTab] = useState("overview"); // overview | curriculum | instructor | reviews
-  const [courseDetails, setCourseDetails] = useState(null);
-  const [detailsLoading, setDetailsLoading] = useState(false);
 
   const navigate = useNavigate();
   const location = useLocation();
@@ -47,19 +38,6 @@ const CoursePurchase = () => {
   const curriculumRef = useRef(null);
   const instructorRef = useRef(null);
   const reviewsRef = useRef(null);
-
-  // NEW: Journey section ref (for hash navigation)
-  const journeyRef = useRef(null);
-
-  const ratings = { 5: 5, 4: 0.2, 3: 0.1, 2: 0.08, 1: 0.04 };
-  const total = Object.values(ratings).reduce((a, b) => a + b, 0);
-  const avgRaw = total
-    ? Object.entries(ratings).reduce((s, [star, cnt]) => s + Number(star) * cnt, 0) / total
-    : 0;
-
-  // Show 4.9 (round up to 1 decimal)
-  const displayAvg = Math.ceil(avgRaw * 10) / 10;
-  const starFill = (avgRaw / 5) * 100; // 4.9/5 = 98%
 
   // Provide fallback course data if location.state is null
   const course = location.state || {
@@ -79,32 +57,9 @@ const CoursePurchase = () => {
 
   useEffect(() => {
     if (!location.state) {
-      console.warn('⚠️ No course data received from navigation, using fallback course');
+      console.warn('⚠ No course data received from navigation, using fallback course');
     }
-    const search = new URLSearchParams(location.search);
-    const paramId = search.get('courseId');
-    const stateId = (location.state && location.state._id) || null;
-    const id = stateId || paramId;
-    if (!id) return;
-
-    let cancelled = false;
-    (async () => {
-      try {
-        setDetailsLoading(true);
-        const res = await fetch(`/api/courses/student/published-courses/${id}`);
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const data = await res.json();
-        const c = data.course || data.data || data;
-        if (!cancelled) setCourseDetails(c);
-      } catch (e) {
-        console.warn('Failed to load course details, using provided state/fallback', e.message);
-      } finally {
-        if (!cancelled) setDetailsLoading(false);
-      }
-    })();
-
-    return () => { cancelled = true; };
-  }, [location.state, location.search]);
+  }, [location.state]);
 
   // Smooth scroll with header offset
   const scrollWithOffset = (element) => {
@@ -153,16 +108,6 @@ const CoursePurchase = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // NEW: when URL has #cat-journey, smooth-scroll to the Journey section after mount
-  useEffect(() => {
-    if (location.hash === "#cat-journey") {
-      const t = setTimeout(() => {
-        scrollWithOffset(journeyRef.current);
-      }, 100); // slight delay so images/layout mount
-      return () => clearTimeout(t);
-    }
-  }, [location.hash]);
-
   const handlePayment = async () => {
     const token = localStorage.getItem("authToken");
     if (!token) {
@@ -182,7 +127,7 @@ const CoursePurchase = () => {
         try {
           const response = await fetch("/api/user/payment/verify-and-unlock", {
             method: "POST",
-            headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+            headers: { "Content-Type": "application/json", Authorization: Bearer ${token} },
             body: JSON.stringify({
               razorpay_order_id: 'dev_order_' + Date.now(),
               razorpay_payment_id: 'dev_payment_' + Date.now(),
@@ -209,14 +154,14 @@ const CoursePurchase = () => {
     try {
       // Check already unlocked
       const checkRes = await fetch("/api/user/student/my-courses", {
-        headers: { Authorization: `Bearer ${token}` }
+        headers: { Authorization: Bearer ${token} }
       });
 
       if (checkRes.ok) {
         try {
           const checkData = await checkRes.json();
           const courseId = (course && course._id) || null;
-          const realEnrollments = (checkData.courses || []).filter(c => c._id && !c._id.toString().startsWith('demo_'));
+          const realEnrollments = (checkData.courses || []).filter(c => c.id && !c._id.toString().startsWith('demo'));
           const alreadyUnlocked = courseId && realEnrollments.some(c => {
             const enrolledCourseId = (c.courseId && c.courseId._id) || c.courseId;
             return enrolledCourseId && enrolledCourseId.toString() === courseId.toString();
@@ -234,7 +179,7 @@ const CoursePurchase = () => {
 
       try {
         const courseId = (course && course._id) || '6835a4fcf528e08ff15a566e';
-        const courseRes = await fetch(`/api/courses/student/published-courses/${courseId}`);
+        const courseRes = await fetch(/api/courses/student/published-courses/${courseId});
         if (courseRes.ok) {
           const courseData = await courseRes.json();
           const c = courseData.course || courseData.data || courseData;
@@ -248,12 +193,12 @@ const CoursePurchase = () => {
       // Create order
       const orderRes = await fetch("/api/user/payment/create-order", {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        headers: { "Content-Type": "application/json", Authorization: Bearer ${token} },
         body: JSON.stringify({ amount: amountInPaise, courseId: course._id })
       });
 
       if (!orderRes.ok) {
-        alert(`❌ Failed to create order: ${orderRes.status} ${orderRes.statusText}`);
+        alert(❌ Failed to create order: ${orderRes.status} ${orderRes.statusText});
         return;
       }
 
@@ -273,7 +218,7 @@ const CoursePurchase = () => {
         handler: function (response) {
           fetch("/api/user/payment/verify-and-unlock", {
             method: "POST",
-            headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+            headers: { "Content-Type": "application/json", Authorization: Bearer ${token} },
             body: JSON.stringify({
               razorpay_order_id: response.razorpay_order_id,
               razorpay_payment_id: response.razorpay_payment_id,
@@ -311,44 +256,9 @@ const CoursePurchase = () => {
     }
   };
 
-  const toEmbedUrl = (url) => {
-    if (!url || typeof url !== 'string') return '';
-    try {
-      // Handle youtu.be short links
-      const short = url.match(/^https?:\/\/youtu\.be\/([\w-]{11})/i);
-      if (short) return `https://www.youtube.com/embed/${short[1]}`;
-      // Handle standard watch URLs
-      const u = new URL(url);
-      if ((u.hostname.includes('youtube.com') || u.hostname.includes('youtu.be')) && (u.searchParams.get('v') || u.pathname.includes('/embed/'))) {
-        const id = u.searchParams.get('v') || u.pathname.split('/').pop();
-        if (id) return `https://www.youtube.com/embed/${id}`;
-      }
-      // If already an embed link, pass through
-      if (/\/embed\//.test(url)) return url;
-      return '';
-    } catch { return ''; }
-  };
-
   const toggleCurriculum = (index) => {
     setOpenCurriculumIndex(index === openCurriculumIndex ? null : index);
   };
-
-  const mergedCourse = {
-    ...course,
-    ...(courseDetails || {}),
-    overview: {
-      ...(course.overview || {}),
-      ...((courseDetails && courseDetails.overview) || {})
-    }
-  };
-
-  const materialIncludes = Array.isArray(mergedCourse?.overview?.materialIncludes)
-    ? mergedCourse.overview.materialIncludes
-    : (Array.isArray(course?.features) ? course.features : []);
-
-  const requirements = Array.isArray(mergedCourse?.overview?.requirements)
-    ? mergedCourse.overview.requirements
-    : [];
 
   return (
     <div ref={topRef} className="course-page container">
@@ -357,25 +267,19 @@ const CoursePurchase = () => {
         <div className="col-lg-9 left-sections">
           {/* Video */}
           <div className="video-banners">
-            {(() => {
-              const preferred = toEmbedUrl(mergedCourse?.overview?.videoUrl);
-              const src = preferred || "https://www.youtube.com/embed/aDXkJwqAiP4?si=gtkt5zJpNyAy7LBS";
-              return (
-                <iframe
-                  width="100%"
-                  height="600"
-                  src={src}
-                  title="Course Intro Video"
-                  frameBorder="0"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  allowFullScreen
-                />
-              );
-            })()}
+            <iframe
+              width="100%"
+              height="600"
+              src="https://www.youtube.com/embed/aDXkJwqAiP4?si=gtkt5zJpNyAy7LBS"
+              title="Course Intro Video"
+              frameBorder="0"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+            ></iframe>
           </div>
 
           {/* Title */}
-          <h2 className="course-title">{mergedCourse?.name || course?.name || 'CAT 2025 Full Course IIM ABC Practice Batch'}</h2>
+          <h2 className="course-title">{course?.name || 'CAT 2025 Full Course IIM ABC Practice Batch'}</h2>
 
           {/* Info Grid */}
           <div className="info-grid">
@@ -404,34 +308,34 @@ const CoursePurchase = () => {
               <span className="icon">⭐</span>
               <div>
                 <div className="label">Reviews</div>
-                <div className="value">4.9 (Google)</div>
+                <div className="value">4.8 (Google)</div>
               </div>
             </div>
           </div>
 
-          {/* Tabs */}
+          {/* Tabs (sticky strip recommended via CSS if needed) */}
           <div className="course-tabs-section" ref={overviewRef}>
             <div className="tab-buttons">
               <button
-                className={`tab-btn ${activeTab === "overview" ? "active" : ""}`}
+                className={tab-btn ${activeTab === "overview" ? "active" : ""}}
                 onClick={() => handleTabClick("overview")}
               >
                 📘 Overview
               </button>
               <button
-                className={`tab-btn ${activeTab === "curriculum" ? "active" : ""}`}
+                className={tab-btn ${activeTab === "curriculum" ? "active" : ""}}
                 onClick={() => handleTabClick("curriculum")}
               >
                 📄 Curriculum
               </button>
               <button
-                className={`tab-btn ${activeTab === "instructor" ? "active" : ""}`}
+                className={tab-btn ${activeTab === "instructor" ? "active" : ""}}
                 onClick={() => handleTabClick("instructor")}
               >
                 👤 Instructor
               </button>
               <button
-                className={`tab-btn ${activeTab === "reviews" ? "active" : ""}`}
+                className={tab-btn ${activeTab === "reviews" ? "active" : ""}}
                 onClick={() => handleTabClick("reviews")}
               >
                 ⭐ Reviews
@@ -441,21 +345,14 @@ const CoursePurchase = () => {
             {/* Overview Content */}
             <div className="tab-content">
               <h3>About The Course</h3>
-              {(mergedCourse?.overview?.about || mergedCourse?.overview?.description) ? (
-                <div
-                  className="course-overview-html"
-                  dangerouslySetInnerHTML={{ __html: mergedCourse?.overview?.about || mergedCourse?.overview?.description }}
-                />
-              ) : (
-                <>
-                  <p>
-                    Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
-                  </p>
-                  <p>
-                    The passage experienced a surge in popularity during the 1960s when Letraset used it on their dry-transfer sheets, and again during the 90s as desktop publishers bundled the text with their software.
-                  </p>
-                </>
-              )}
+              <p>
+                Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.”
+                The purpose of lorem ipsum is to create a natural looking block of text (sentence, paragraph, page, etc.) that doesn't distract from the layout.
+              </p>
+              <p>
+                The passage experienced a surge in popularity during the 1960s when Letraset used it on their dry-transfer sheets, and again during the 90s as desktop publishers bundled the text with their software.
+              </p>
+              <p><strong>OR WHAT WILL YOU LEARN??</strong></p>
             </div>
           </div>
 
@@ -464,7 +361,7 @@ const CoursePurchase = () => {
             <h3>The Course Curriculum</h3>
             {curriculumData.map((item, index) => (
               <div
-                className={`curriculum-item ${openCurriculumIndex === index ? 'active' : ''}`}
+                className={curriculum-item ${openCurriculumIndex === index ? 'active' : ''}}
                 key={index}
                 onClick={() => toggleCurriculum(index)}
               >
@@ -504,27 +401,22 @@ const CoursePurchase = () => {
               {/* Left: Rating Summary */}
               <div className="rating-summary">
                 <div>
-                  <div className="rating-score">{displayAvg.toFixed(1)}</div>
-
-                  {/* partial-fill stars */}
-                  <div className="rating-stars" style={{ '--percent': `${starFill}%` }}>
-                    <span className="stars-outer">★★★★★</span>
-                    <span className="stars-inner">★★★★★</span>
-                  </div>
-
-                  <p className="total-rating">1,932 reviews</p>
+                  <div className="rating-score">4.0</div>
+                  <div className="rating-stars">★★★★★</div>
+                  <p className="total-rating">Total 6 Ratings</p>
                 </div>
 
                 <div className="rating-bars">
-                  {[5, 4, 3, 2, 1].map((star) => (
-                    <div className="bar-line" key={star}>
+                  {[5, 4, 3, 2, 1].map((star, index) => (
+                    <div className="bar-line" key={index}>
                       <span className="star">☆</span> <span>{star}</span>
                       <div className="bar">
                         <div
                           className="fill"
-                          style={{ width: `${total ? ((ratings[star] || 0) / total) * 100 : 0}%` }}
-                        />
+                          style={{ width: ${star === 5 ? 90 : star === 4 ? 50 : 10}% }}
+                        ></div>
                       </div>
+                      <span className="count">{star === 5 ? 5 : star === 4 ? 1 : 0} Rating</span>
                     </div>
                   ))}
                 </div>
@@ -532,29 +424,22 @@ const CoursePurchase = () => {
 
               {/* Right: Image */}
               <div className="review-image-box">
-                <img src={reviewMain} alt="Review Summary" />
+                <img src={review} alt="Review Summary" />
               </div>
-            </div>
-
-            {/* NEW: extra review images row */}
-            <div className="reviews-gallery">
-              <img src={review3} alt="Student Review 3" />
-              <img src={review4} alt="Student Review 4" />
-              <img src={review6} alt="Student Review 6" />
             </div>
           </div>
         </div>
 
-        {/* Right column */}
+        {/* Right Section: 40% */}
         <div className="col-md-3 right-section">
           <div className="course-info-box">
             <div className="course-title-box">
-              {mergedCourse?.title || mergedCourse?.name || "COURSE TITLE"}
+              {course?.title || "COURSE TITLE"}
             </div>
 
             <div style={{ fontSize: "20px", fontWeight: "600", marginBottom: "12px", color: "#1A237E" }}>
-              Price: <span style={{ color: "#D32F2F" }}>{mergedCourse?.price ? `₹${mergedCourse.price}` : "₹30,000/-"}</span>
-              <del style={{ marginLeft: "8px", color: "#888" }}>{mergedCourse?.oldPrice || "₹1,20,000/-"}</del>
+              Price: <span style={{ color: "#D32F2F" }}>{course?.price || "₹30,000/-"}</span>
+              <del style={{ marginLeft: "8px", color: "#888" }}>{course?.oldPrice || "₹1,20,000/-"}</del>
             </div>
 
             <div
@@ -569,57 +454,54 @@ const CoursePurchase = () => {
               }}
             >
               <ul style={{ paddingLeft: "20px", marginBottom: "10px" }}>
-                {Array.isArray(materialIncludes) && materialIncludes.length > 0 ? (
-                  materialIncludes.map((feat, idx) => (
-                    <li key={idx} style={{ marginBottom: "6px" }}>
-                      {feat}
-                    </li>
-                  ))
-                ) : (
-                  <li>No description available.</li>
-                )}
+                {course?.features?.map((feat, idx) => (
+                  <li key={idx} style={{ marginBottom: "6px" }}>
+                    {feat}
+                  </li>
+                )) || <li>No description available.</li>}
               </ul>
             </div>
- 
-            <button
-  className="buy-btn"
-  style={{
-    backgroundColor: "#1A237E",
-    fontSize: "16px",
-    padding: "12px",
-    fontWeight: "600",
-    borderRadius: "8px",
-    marginTop: "15px",
-    transition: "0.3s",
-  }}
-  onClick={() =>
-    window.open(
-      "https://pages.razorpay.com/pl_L4RlLDUmQHzJRO/view",
-      "_blank",
-      "noopener,noreferrer"
-    )
-  }
->
-  Buy Now
-</button>
 
+            <button
+              className="buy-btn"
+              style={{
+                backgroundColor: "#1A237E",
+                fontSize: "16px",
+                padding: "12px",
+                fontWeight: "600",
+                borderRadius: "8px",
+                marginTop: "15px",
+                transition: "0.3s",
+              }}
+              onClick={() => {
+                const token = localStorage.getItem('authToken');
+                if (!token) { return window?.toast?.error ? window.toast.error('Please login') : alert('Please login'); }
+                let payload = {};
+                try { payload = JSON.parse(atob(token.split('.')[1] || '')) || {}; } catch {}
+                const params = {
+                  courseId: course?._id,
+                  userId: payload?.id || payload?._id,
+                  amountINR: course?.price || 1500,
+                  courseName: course?.name || 'Course Purchase',
+                  userEmail: payload?.email || 'test@example.com',
+                  userPhone: '9999999999'
+                };
+                if (window.buyCourse) window.buyCourse(params);
+              }}
+            >
+              Buy Now
+            </button>
           </div>
 
           {/* Material Includes */}
           <div className="material-box">
             <h4>Material Includes</h4>
             <ul className="material-list">
-              {Array.isArray(materialIncludes) && materialIncludes.length > 0 ? (
-                materialIncludes.map((item, idx) => <li key={idx}>{item}</li>)
-              ) : (
-                <>
-                  <li>Certificate of Completion</li>
-                  <li>444 downloadable resource</li>
-                  <li>Full lifetime access</li>
-                  <li>1300+ Hours of Videos</li>
-                  <li>20 Mocks & 45 Sectional Mocks</li>
-                </>
-              )}
+              <li>Certificate of Completion</li>
+              <li>444 downloadable resource</li>
+              <li>Full lifetime access</li>
+              <li>1300+ Hours of Videos</li>
+              <li>20 Mocks & 45 Sectional Mocks</li>
             </ul>
           </div>
 
@@ -627,30 +509,22 @@ const CoursePurchase = () => {
           <div className="material-box">
             <h4>Requirements</h4>
             <ul className="material-list">
-              {Array.isArray(requirements) && requirements.length > 0 ? (
-                requirements.map((item, idx) => <li key={idx}>{item}</li>)
-              ) : (
-                <>
-                  <li>Required minimum gradution score to appear in CAT</li>
-                  <li>50% For General/OBC & 45% For SC/ST/PwD candidates</li>
-                  <li>Final year bachelor's degree candidates or those awaiting their result are also eligible to appear for the CAT exam.</li>
-                  <li>Candidates with profeessional qualification such as CA/CS/ICWA can also appear foe CAT.</li>
-                  <li>10th or 12th scores do not affect the CAT Eligibility</li>
-                </>
-              )}
+              <li>Required minimum gradution score to appear in CAT</li>
+              <li>50% For General/OBC & 45% For SC/ST/PwD candidates</li>
+              <li>Final year bachelor's degree candidates or those awaiting their result are also eligible to appear for the CAT exam.</li>
+              <li>Candidates with profeessional qualification such as CA/CS/ICWA can also appear foe CAT.</li>
+              <li>10th or 12th scores do not affect the CAT Eligibility</li>
             </ul>
           </div>
         </div>
       </div>
-<Chatbox/>
-      {/* Journey Image — give it an id for hash navigation and attach the ref */}
-      <div id="cat-journey" ref={journeyRef} className="cat-journey-wrapper">
+
+      {/* Journey Image */}
+      <div className="cat-journey-wrapper">
         <img src={frame} alt="CAT Learning Journey" className="journey-image" />
       </div>
     </div>
-    
   );
-  
 };
 
 export default CoursePurchase;
