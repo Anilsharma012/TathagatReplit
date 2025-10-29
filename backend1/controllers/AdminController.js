@@ -6,6 +6,7 @@ const jwt = require("jsonwebtoken");
 const User = require("../models/UserSchema");
 const Admin = require("../models/Admin");
 const UserProgress = require("../models/UserProgress");
+const mongoose = require("mongoose");
 
 const JWT_SECRET = process.env.JWT_SECRET || "secret_admin_key";
 
@@ -33,6 +34,26 @@ exports.loginAdmin = async (req, res) => {
   const { email, password } = req.body;
 
   try {
+    // Check if database is connected
+    const isDbConnected = mongoose.connection.readyState === 1;
+    
+    // Development mode without database - use mock admin
+    if (!isDbConnected && process.env.NODE_ENV !== 'production') {
+      console.log('🔥 DEV MODE: Admin login without database');
+      console.log(`🔥 DEV MODE: Allowing admin login for ${email}`);
+      
+      // Create a mock admin token for development
+      const mockAdminId = '507f1f77bcf86cd799439011'; // Mock MongoDB ObjectId
+      const token = jwt.sign({ id: mockAdminId, role: "admin", email }, JWT_SECRET, { expiresIn: "1d" });
+      
+      return res.status(200).json({ 
+        token,
+        message: "Development mode: Admin logged in successfully",
+        devMode: true 
+      });
+    }
+
+    // Normal database flow
     let admin = await Admin.findOne({ email });
 
     // In development, auto-create an admin if none exists for smoother DX
