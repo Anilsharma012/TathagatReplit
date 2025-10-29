@@ -127,7 +127,7 @@ const CoursePurchase = () => {
         try {
           const response = await fetch("/api/user/payment/verify-and-unlock", {
             method: "POST",
-            headers: { "Content-Type": "application/json", Authorization: Bearer ${token} },
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
             body: JSON.stringify({
               razorpay_order_id: 'dev_order_' + Date.now(),
               razorpay_payment_id: 'dev_payment_' + Date.now(),
@@ -154,7 +154,7 @@ const CoursePurchase = () => {
     try {
       // Check already unlocked
       const checkRes = await fetch("/api/user/student/my-courses", {
-        headers: { Authorization: Bearer ${token} }
+        headers: { Authorization: `Bearer ${token}` }
       });
 
       if (checkRes.ok) {
@@ -179,7 +179,7 @@ const CoursePurchase = () => {
 
       try {
         const courseId = (course && course._id) || '6835a4fcf528e08ff15a566e';
-        const courseRes = await fetch(/api/courses/student/published-courses/${courseId});
+        const courseRes = await fetch(`/api/courses/student/published-courses/${courseId}`);
         if (courseRes.ok) {
           const courseData = await courseRes.json();
           const c = courseData.course || courseData.data || courseData;
@@ -193,12 +193,12 @@ const CoursePurchase = () => {
       // Create order
       const orderRes = await fetch("/api/user/payment/create-order", {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: Bearer ${token} },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({ amount: amountInPaise, courseId: course._id })
       });
 
       if (!orderRes.ok) {
-        alert(❌ Failed to create order: ${orderRes.status} ${orderRes.statusText});
+        alert(`❌ Failed to create order: ${orderRes.status} ${orderRes.statusText}`);
         return;
       }
 
@@ -218,7 +218,7 @@ const CoursePurchase = () => {
         handler: function (response) {
           fetch("/api/user/payment/verify-and-unlock", {
             method: "POST",
-            headers: { "Content-Type": "application/json", Authorization: Bearer ${token} },
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
             body: JSON.stringify({
               razorpay_order_id: response.razorpay_order_id,
               razorpay_payment_id: response.razorpay_payment_id,
@@ -317,25 +317,25 @@ const CoursePurchase = () => {
           <div className="course-tabs-section" ref={overviewRef}>
             <div className="tab-buttons">
               <button
-                className={tab-btn ${activeTab === "overview" ? "active" : ""}}
+                className={`tab-btn ${activeTab === "overview" ? "active" : ""}`}
                 onClick={() => handleTabClick("overview")}
               >
                 📘 Overview
               </button>
               <button
-                className={tab-btn ${activeTab === "curriculum" ? "active" : ""}}
+                className={`tab-btn ${activeTab === "curriculum" ? "active" : ""}`}
                 onClick={() => handleTabClick("curriculum")}
               >
                 📄 Curriculum
               </button>
               <button
-                className={tab-btn ${activeTab === "instructor" ? "active" : ""}}
+                className={`tab-btn ${activeTab === "instructor" ? "active" : ""}`}
                 onClick={() => handleTabClick("instructor")}
               >
                 👤 Instructor
               </button>
               <button
-                className={tab-btn ${activeTab === "reviews" ? "active" : ""}}
+                className={`tab-btn ${activeTab === "reviews" ? "active" : ""}`}
                 onClick={() => handleTabClick("reviews")}
               >
                 ⭐ Reviews
@@ -361,7 +361,7 @@ const CoursePurchase = () => {
             <h3>The Course Curriculum</h3>
             {curriculumData.map((item, index) => (
               <div
-                className={curriculum-item ${openCurriculumIndex === index ? 'active' : ''}}
+                className={`curriculum-item ${openCurriculumIndex === index ? 'active' : ''}`}
                 key={index}
                 onClick={() => toggleCurriculum(index)}
               >
@@ -413,7 +413,7 @@ const CoursePurchase = () => {
                       <div className="bar">
                         <div
                           className="fill"
-                          style={{ width: ${star === 5 ? 90 : star === 4 ? 50 : 10}% }}
+                          style={{ width: `${star === 5 ? 90 : star === 4 ? 50 : 10}%` }}
                         ></div>
                       </div>
                       <span className="count">{star === 5 ? 5 : star === 4 ? 1 : 0} Rating</span>
